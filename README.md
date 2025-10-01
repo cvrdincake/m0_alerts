@@ -77,6 +77,11 @@ A modular OBS-ready alert platform that pairs a Vite + React front-end with a No
 └── vite.config.js
 ```
 
+## Governance & Planning
+
+- **System safety audit** – See [`docs/project-audit.md`](docs/project-audit.md) for a top-to-bottom assessment, risk register, and prioritised backlog for modularising and hardening the stack.
+- **Development standards** – Follow [`docs/development-standards.md`](docs/development-standards.md) for coding conventions, lint/test expectations, and review etiquette introduced in this iteration.
+
 ## Development Notes
 
 - **Alert lifecycle** – alerts enter through WebSocket broadcasts, the dashboard test buttons, or `window.postMessage`. Each source uses the same factory helpers ensuring consistent durations, audio, and text templates.
