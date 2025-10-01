@@ -1,4 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+const resolveDuration = (alert, getDuration) => {
+  if (typeof getDuration === 'function') {
+    return getDuration(alert);
+  }
+
+  if (alert?.displayDuration) {
+    return alert.displayDuration;
+  }
+
+  return 5000;
+};
 
 export const useAlertQueue = (getDuration) => {
   const [queue, setQueue] = useState([]);
@@ -6,19 +18,23 @@ export const useAlertQueue = (getDuration) => {
   const timerRef = useRef();
   const processingRef = useRef(false);
 
-  const dequeue = useCallback(() => {
-    setQueue((prev) => prev.slice(1));
-  }, []);
-
-  const clearTimer = () => {
+  const clearTimer = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = undefined;
     }
-  };
+  }, []);
 
-  const processQueue = useCallback(() => {
-    if (processingRef.current || queue.length === 0) {
+  useEffect(() => () => clearTimer(), [clearTimer]);
+
+  useEffect(() => {
+    if (processingRef.current) {
+      return;
+    }
+
+    if (queue.length === 0) {
+      setCurrent(null);
+      clearTimer();
       return;
     }
 
@@ -26,22 +42,24 @@ export const useAlertQueue = (getDuration) => {
     processingRef.current = true;
     setCurrent(next);
 
-    const duration = typeof getDuration === 'function' ? getDuration(next) : 5000;
+    const duration = resolveDuration(next, getDuration);
 
-    clearTimer();
     timerRef.current = setTimeout(() => {
       processingRef.current = false;
-      setCurrent(null);
-      dequeue();
+      setQueue((prev) => {
+        const [, ...rest] = prev;
+        if (rest.length === 0) {
+          setCurrent(null);
+        }
+        return rest;
+      });
     }, duration);
-  }, [dequeue, getDuration, queue]);
-
-  useEffect(() => {
-    processQueue();
-    return clearTimer;
-  }, [processQueue]);
+  }, [queue, getDuration, clearTimer]);
 
   const enqueue = useCallback((alert) => {
+    if (!alert) {
+      return;
+    }
     setQueue((prev) => [...prev, alert]);
   }, []);
 
@@ -50,13 +68,15 @@ export const useAlertQueue = (getDuration) => {
     processingRef.current = false;
     setQueue([]);
     setCurrent(null);
-  }, []);
+  }, [clearTimer]);
+
+  const isProcessing = useMemo(() => processingRef.current, [queue, current]);
 
   return {
     queue,
     current,
     enqueue,
     clear,
-    isProcessing: processingRef.current,
+    isProcessing,
   };
 };

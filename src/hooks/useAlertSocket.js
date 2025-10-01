@@ -19,6 +19,13 @@ export const useAlertSocket = ({ enabled = true, onAlert, onStatusChange } = {})
 
   useEffect(() => {
     if (!enabled || !wsUrl) {
+      statusHandlerRef.current?.('offline');
+      return undefined;
+    }
+
+    if (typeof WebSocket === 'undefined') {
+      console.warn('WebSocket API is not available in this environment.');
+      statusHandlerRef.current?.('unsupported');
       return undefined;
     }
 

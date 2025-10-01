@@ -32,6 +32,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-pink-400',
       },
       sound: '💖',
+      soundUrl: '/sounds/follow.mp3',
       duration: 4000,
       animation: 'bounce',
       template: (data) => ({
@@ -56,6 +57,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-purple-400',
       },
       sound: '⭐',
+      soundUrl: '/sounds/subscribe.mp3',
       duration: 5000,
       animation: 'pulse',
       template: (data) => ({
@@ -80,6 +82,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-green-400',
       },
       sound: '💰',
+      soundUrl: '/sounds/donation.mp3',
       duration: 6000,
       animation: 'shake',
       template: (data) => ({
@@ -105,6 +108,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-orange-400',
       },
       sound: '🚀',
+      soundUrl: '/sounds/raid.mp3',
       duration: 7000,
       animation: 'slide',
       template: (data) => ({
@@ -130,6 +134,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-yellow-400',
       },
       sound: '⚡',
+      soundUrl: '/sounds/cheer.mp3',
       duration: 5000,
       animation: 'bounce',
       template: (data) => ({
@@ -155,6 +160,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-cyan-400',
       },
       sound: '🎁',
+      soundUrl: '/sounds/giftsub.mp3',
       duration: 6000,
       animation: 'pulse',
       template: (data) => ({
@@ -180,6 +186,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-yellow-400',
       },
       sound: '👑',
+      soundUrl: '/sounds/member.mp3',
       duration: 5000,
       animation: 'bounce',
       template: (data) => ({
@@ -205,6 +212,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-red-400',
       },
       sound: '💵',
+      soundUrl: '/sounds/superchat.mp3',
       duration: 7000,
       animation: 'shake',
       template: (data) => ({
@@ -230,6 +238,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-indigo-400',
       },
       sound: '🏆',
+      soundUrl: '/sounds/host.mp3',
       duration: 5000,
       animation: 'slide',
       template: (data) => ({
@@ -255,6 +264,7 @@ export const ALERT_DEFINITIONS = {
         accent: 'bg-amber-400',
       },
       sound: '☕',
+      soundUrl: '/sounds/tip.mp3',
       duration: 5000,
       animation: 'pulse',
       template: (data) => ({
@@ -268,6 +278,8 @@ export const ALERT_DEFINITIONS = {
 };
 
 export const ALERT_TYPE_KEYS = Object.keys(ALERT_DEFINITIONS);
+
+export const getAlertDefinition = (type) => ALERT_DEFINITIONS[type] ?? null;
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const randomAmount = (min, max) => formatter.format(Math.random() * (max - min) + min);

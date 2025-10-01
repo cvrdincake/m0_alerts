@@ -9,20 +9,14 @@ import {
 import { useAlertQueue } from '../hooks/useAlertQueue.js';
 import { environment } from '../config/environment.js';
 import { fetchConnectionStatus, sendTestAlert } from '../services/alertApi.js';
+import { createStreamAlert } from '../utils/alertFactory.js';
 
 const AUTO_MODE_INTERVAL = 5000;
-
-const buildAlert = (type, payload) => ({
-  id: `${type}-${Date.now()}-${Math.random()}`,
-  type,
-  payload,
-  createdAt: Date.now(),
-});
 
 export const StreamAlertBox = () => {
   const [autoMode, setAutoMode] = useState(false);
   const [status, setStatus] = useState(null);
-  const { current, queue, enqueue, clear } = useAlertQueue(() => 5000);
+  const { current, queue, enqueue, clear } = useAlertQueue((alert) => alert.displayDuration);
 
   useEffect(() => {
     if (!autoMode) {
@@ -33,7 +27,7 @@ export const StreamAlertBox = () => {
       const type = ALERT_TYPE_KEYS[Math.floor(Math.random() * ALERT_TYPE_KEYS.length)];
       const payloadFactory = RANDOM_ALERT_PAYLOADS[type];
       const payload = payloadFactory();
-      enqueue(buildAlert(type, payload));
+      enqueue(createStreamAlert(type, payload));
     }, AUTO_MODE_INTERVAL);
 
     return () => clearInterval(timer);
@@ -41,7 +35,7 @@ export const StreamAlertBox = () => {
 
   const triggerTestAlert = (type) => {
     const payload = TEST_ALERT_PAYLOADS[type];
-    enqueue(buildAlert(type, payload));
+    enqueue(createStreamAlert(type, payload));
 
     if (environment.apiBaseUrl) {
       sendTestAlert(type, payload);
@@ -74,7 +68,7 @@ export const StreamAlertBox = () => {
   }, [environment.apiBaseUrl]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 p-8">
+    <div className="min-h-full bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 p-8">
       <div className="max-w-6xl mx-auto">
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 mb-8 border border-purple-500/20">
           <header className="flex flex-col gap-6">
@@ -179,7 +173,7 @@ const StreamAlertCard = ({ alert }) => {
                 {config.label}
               </div>
               <div className="text-white text-2xl font-bold">
-                {config.stream.template(alert.payload)}
+                {alert.streamContent}
               </div>
             </div>
             <div className="text-4xl animate-bounce">{config.stream.sound}</div>
@@ -231,7 +225,7 @@ const QueuedAlert = ({ alert }) => {
       <Icon className="w-4 h-4" />
       <span className="font-medium capitalize">{alert.type}</span>
       <span className="text-slate-400">-</span>
-      <span>{config.stream.template(alert.payload)}</span>
+      <span>{alert.streamContent}</span>
     </div>
   );
 };

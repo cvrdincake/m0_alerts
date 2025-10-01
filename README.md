@@ -1,102 +1,101 @@
 # M0 AlertBox
 
-A modular OBS-ready alert platform built with React, Vite, and a companion Node.js backend. The project ships with a dashboard-style trigger panel (`StreamAlertBox`), a production-ready overlay renderer (`AlertBoxDisplay`), and a streaming alert service capable of brokering Twitch, YouTube, and StreamLabs events. TailwindCSS-driven utility classes are combined with handcrafted broadcast-safe styles for a premium visual finish.
+A modular OBS-ready alert platform that pairs a Vite + React front-end with a Node.js event broker. The project now ships with a routed dashboard/overlay experience, a single source of alert definitions, reusable queue utilities, and hardened WebSocket handling so the overlay can safely evolve as the backend grows.
 
-## Features
+## Highlights
 
-- **Dual alert experiences**: configure alerts from the dashboard while the overlay mirrors the production look.
-- **Extensible presets**: centralized alert definitions in [`src/config/alertPresets.js`](src/config/alertPresets.js) control iconography, messaging, colors, and timing.
-- **Queue management**: shared [`useAlertQueue`](src/hooks/useAlertQueue.js) hook orchestrates timing and playback for both the dashboard and overlay.
-- **Realtime backend**: [`backend/server.js`](backend/server.js) exposes OAuth flows, webhook handling, and WebSocket fan-out for Twitch, YouTube, and StreamLabs.
-- **Testing workflows**: trigger individual events with the dashboard buttons or append `?test=true` to the URL for autonomous overlay simulation.
-- **Resilient sockets**: the overlay automatically reconnects to the backend WebSocket and surfaces connection state for production readiness.
+- **Dedicated routes** – `/` hosts the Stream Alert dashboard, while `/overlay` exposes the production browser source. The dashboard header links directly to the overlay (opening in a new tab for OBS usage).
+- **Centralised alert definitions** – [`src/config/alertPresets.js`](src/config/alertPresets.js) defines icons, gradients, sound effects, durations, and templates for both the dashboard cards and the overlay renderer.
+- **Reusable factories & queues** – [`src/utils/alertFactory.js`](src/utils/alertFactory.js) produces normalised alert payloads and [`src/hooks/useAlertQueue.js`](src/hooks/useAlertQueue.js) orchestrates playback with predictable timing.
+- **WebSocket aware overlay** – [`AlertBoxDisplay`](src/components/AlertBoxDisplay.jsx) consumes backend broadcasts via [`useAlertSocket`](src/hooks/useAlertSocket.js), falls back to `window.postMessage`, and supports autonomous test mode (`?test=true`) plus optional TTS (`?tts=true`).
+- **Environment-driven setup** – `.env.example` covers backend credentials, session secrets, optional persistence, and the Vite runtime configuration needed to bind the dashboard to the API/WS server.
 
 ## Getting Started
 
-1. Install dependencies
+1. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. Copy environment variables
+2. **Create your environment file**
 
    ```bash
    cp .env.example .env
    ```
 
-   Populate the OAuth credentials, webhook base URL, and Vite runtime (`VITE_ALERT_*`) values before running in production.
+   Populate Twitch, YouTube, and StreamLabs credentials along with the WebSocket/API origins. For local dev the defaults target `http://localhost:3000` for the backend and Vite at `http://localhost:5173`.
 
-3. Run the backend service (required for live integrations)
+3. **Start the backend**
 
    ```bash
    npm run server
    ```
 
-4. Run the Vite dev server (in a new terminal)
+   The Express server lives in [`backend/server.js`](backend/server.js) and exposes `/auth/*` OAuth flows, `/webhooks/twitch` verification, `/api/test-alert`, and a WebSocket fan-out.
+
+4. **Start the Vite dev server**
 
    ```bash
    npm run dev
    ```
 
-5. Open the browser source (default: <http://localhost:5173>). Use OBS "Browser Source" with 1920x1080 canvas for best results.
+5. **Open the dashboard** – <http://localhost:5173/>. Use the control panel to fire test alerts, toggle auto mode, or verify backend connectivity.
+6. **Load the overlay** – <http://localhost:5173/overlay>. Append `?test=true` for autonomous playback or `?tts=true` to enable speech synthesis. Point your OBS browser source at this route.
 
-6. Toggle dashboard auto-mode or append `?test=true` to preview autonomous overlay playback without the backend.
-
-> **Note:** Package installation requires internet connectivity. If the environment is offline, fetch dependencies locally before running the commands above.
+> **Offline note:** Package installation and OAuth flows require internet connectivity. In constrained environments pre-fetch dependencies and credentials before running the commands above.
 
 ## Project Structure
 
 ```
 ├── backend
-│   └── server.js            # Express backend with Twitch/YT/StreamLabs integrations
+│   └── server.js               # Express + WebSocket backend
 ├── src
-│   ├── App.jsx
-│   ├── main.jsx
-│   ├── index.css
+│   ├── App.jsx                 # React Router entry point with dashboard shell
+│   ├── main.jsx                # React/Vite bootstrap with BrowserRouter
 │   ├── components
-│   │   ├── AlertBoxDisplay.jsx
-│   │   └── StreamAlertBox.jsx
+│   │   ├── AlertBoxDisplay.jsx # Overlay renderer with queue + socket wiring
+│   │   └── StreamAlertBox.jsx  # Dashboard control surface and preview
 │   ├── config
-│   │   ├── alertPresets.js
-│   │   └── environment.js
+│   │   ├── alertPresets.js     # Alert metadata shared by dashboard & overlay
+│   │   └── environment.js      # Runtime environment helpers
 │   ├── hooks
-│   │   ├── useAlertQueue.js
-│   │   └── useAlertSocket.js
+│   │   ├── useAlertQueue.js    # Timed queue processing hook
+│   │   └── useAlertSocket.js   # Reconnecting WebSocket helper
 │   ├── services
-│   │   └── alertApi.js
-│   └── styles
-│       ├── alertbox.css
-│       └── global.css
-├── .env.example              # Environment template for backend credentials
-├── index.html
+│   │   └── alertApi.js         # REST helpers for backend interaction
+│   ├── utils
+│   │   └── alertFactory.js     # Builders for normalised alert objects
+│   ├── styles
+│   │   ├── alertbox.css
+│   │   └── global.css
+│   ├── index.css
+│   └── main.jsx
+├── .env.example                # Comprehensive environment template
 ├── package.json
-├── postcss.config.js
 ├── tailwind.config.js
 └── vite.config.js
 ```
 
-## Integrating Live Events
+## Development Notes
 
-1. Authenticate with Twitch, YouTube, or StreamLabs by visiting the `/auth/*` routes exposed by the backend server.
-2. Twitch EventSub callbacks are verified with your `TWITCH_WEBHOOK_SECRET`; ensure `WEBHOOK_BASE_URL` is reachable publicly.
-3. YouTube memberships and Super Chats are polled every 10 seconds when a live broadcast is active.
-4. StreamLabs donations are streamed over socket.io and broadcast instantly.
-5. Overlay clients automatically subscribe to the backend WebSocket (`/api/status` reports connection counts).
-6. For custom tooling or offline demos, you can still push payloads via `window.postMessage` in addition to backend delivery.
+- **Alert lifecycle** – alerts enter through WebSocket broadcasts, the dashboard test buttons, or `window.postMessage`. Each source uses the same factory helpers ensuring consistent durations, audio, and text templates.
+- **Audio & TTS** – the overlay automatically plays the configured sound file per alert and optionally narrates content when `?tts=true` is appended. Sounds are expected under `public/sounds/`.
+- **Configuration changes** – customise gradients, durations, or copy by editing `alertPresets.js`. Both the dashboard preview and overlay immediately reflect updates.
+- **Routing** – `react-router-dom` keeps the dashboard chrome separate from the overlay canvas. The overlay route omits the navigation shell to remain broadcast-safe.
+- **Extensibility** – extend factories/hooks rather than duplicating logic in components. Adding a new alert type requires updating `alertPresets.js`, supplying a sound file, and optionally creating backend handlers.
 
-## Conventions
+## Troubleshooting
 
-- React components use functional composition and hooks only—no legacy class components.
-- Styling relies on Tailwind utility classes plus curated CSS modules scoped to broadcast visuals.
-- No dynamic `<style>` tag injection; animation primitives live in static CSS for predictability.
+- **No WebSocket connection** – confirm `VITE_ALERT_WS_URL` in `.env` points to the backend and that the server is running (`npm run server`). The overlay surface exposes the connection state via `data-connection-status` for debugging.
+- **Audio blocked in OBS/browser** – ensure the browser source is allowed to autoplay audio or trigger a manual interaction first. Verify sound files exist at the paths referenced in `alertPresets.js`.
+- **OAuth callbacks failing** – double-check the redirect URIs in Twitch/YouTube/StreamLabs developer portals match the values in `.env` and that `WEBHOOK_BASE_URL` is publicly reachable (ngrok recommended for local testing).
 
-## Roadmap Suggestions
+## Roadmap Ideas
 
-- Persist alert history and configuration to local storage or a backend.
-- Harden backend persistence (swap in Redis/Postgres for token storage).
-- Add audio playback hooks for custom sound files.
-- Build scripted integration tests to validate queue behavior and template rendering.
-- Implement admin authentication for production deployments.
+- Persist alert history and settings (Redis/PostgreSQL hooks already sketched in `.env.example`).
+- Add authentication/role-based access for the dashboard.
+- Build automated tests for queue timing and overlay rendering.
+- Expose advanced widgets (ticker, BRB screen) once backend persistence is available.
 
-Enjoy building your next-level stream alert experience!
+Happy streaming!
