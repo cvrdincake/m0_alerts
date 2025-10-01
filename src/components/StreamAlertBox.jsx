@@ -7,6 +7,8 @@ import {
   TEST_ALERT_PAYLOADS,
 } from '../config/alertPresets.js';
 import { useAlertQueue } from '../hooks/useAlertQueue.js';
+import { environment } from '../config/environment.js';
+import { fetchConnectionStatus, sendTestAlert } from '../services/alertApi.js';
 
 const AUTO_MODE_INTERVAL = 5000;
 
@@ -19,6 +21,7 @@ const buildAlert = (type, payload) => ({
 
 export const StreamAlertBox = () => {
   const [autoMode, setAutoMode] = useState(false);
+  const [status, setStatus] = useState(null);
   const { current, queue, enqueue, clear } = useAlertQueue(() => 5000);
 
   useEffect(() => {
@@ -39,9 +42,36 @@ export const StreamAlertBox = () => {
   const triggerTestAlert = (type) => {
     const payload = TEST_ALERT_PAYLOADS[type];
     enqueue(buildAlert(type, payload));
+
+    if (environment.apiBaseUrl) {
+      sendTestAlert(type, payload);
+    }
   };
 
   const activeQueue = useMemo(() => queue.slice(1, 6), [queue]);
+
+  useEffect(() => {
+    if (!environment.apiBaseUrl) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const loadStatus = async () => {
+      const response = await fetchConnectionStatus();
+      if (isMounted && response) {
+        setStatus(response);
+      }
+    };
+
+    loadStatus();
+    const interval = setInterval(loadStatus, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [environment.apiBaseUrl]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 p-8">
@@ -52,6 +82,9 @@ export const StreamAlertBox = () => {
               <Volume2 className="w-8 h-8 text-purple-400" />
               Stream Alert Box
             </h1>
+            {environment.apiBaseUrl && (
+              <StatusGrid status={status} />
+            )}
             <div className="flex flex-wrap gap-4">
               <button
                 type="button"
@@ -154,6 +187,37 @@ const StreamAlertCard = ({ alert }) => {
         </div>
         <div className="h-2 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-pulse" />
       </div>
+    </div>
+  );
+};
+
+const StatusGrid = ({ status }) => {
+  const items = [
+    { label: 'Twitch', active: status?.twitch },
+    { label: 'YouTube', active: status?.youtube },
+    { label: 'StreamLabs', active: status?.streamlabs },
+    {
+      label: 'Clients',
+      value: typeof status?.connectedClients === 'number' ? status.connectedClients : '–',
+      active: (status?.connectedClients ?? 0) > 0,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {items.map(({ label, active, value }) => (
+        <div
+          key={label}
+          className={`glass-card glass-medium px-4 py-3 rounded-xl border border-white/10 flex flex-col gap-1 transition-colors ${
+            active ? 'border-emerald-400/60 text-emerald-300' : 'text-slate-300'
+          }`}
+        >
+          <span className="text-xs uppercase tracking-wide text-slate-400">{label}</span>
+          <span className="text-base font-semibold">
+            {typeof value !== 'undefined' ? value : active ? 'Connected' : 'Pending'}
+          </span>
+        </div>
+      ))}
     </div>
   );
 };

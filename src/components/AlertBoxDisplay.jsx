@@ -5,6 +5,8 @@ import {
   RANDOM_ALERT_PAYLOADS,
 } from '../config/alertPresets.js';
 import { useAlertQueue } from '../hooks/useAlertQueue.js';
+import { useAlertSocket } from '../hooks/useAlertSocket.js';
+import { environment } from '../config/environment.js';
 
 const buildDisplayAlert = (type, payload) => {
   const definition = ALERT_DEFINITIONS[type];
@@ -20,6 +22,9 @@ const getDuration = (alert) => alert.definition.display.duration;
 
 export const AlertBoxDisplay = () => {
   const [autoMode, setAutoMode] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState(
+    environment.isBackendConfigured ? 'connecting' : 'idle',
+  );
   const { current, queue, enqueue } = useAlertQueue(getDuration);
 
   useEffect(() => {
@@ -41,6 +46,20 @@ export const AlertBoxDisplay = () => {
     return () => clearInterval(timer);
   }, [autoMode, enqueue]);
 
+  useAlertSocket({
+    enabled: environment.isBackendConfigured,
+    onAlert: (event) => {
+      const { type, data } = event ?? {};
+      if (!type || !ALERT_DEFINITIONS[type]) {
+        return;
+      }
+      enqueue(buildDisplayAlert(type, data));
+    },
+    onStatusChange: (status) => {
+      setConnectionStatus(status);
+    },
+  });
+
   useEffect(() => {
     const handler = (event) => {
       const { type, data } = event.data ?? {};
@@ -54,22 +73,41 @@ export const AlertBoxDisplay = () => {
     return () => window.removeEventListener('message', handler);
   }, [enqueue]);
 
-  const isConnected = useMemo(() => queue.length > 0 || Boolean(current), [current, queue]);
+  const isConnected = useMemo(() => {
+    if (!environment.isBackendConfigured) {
+      return queue.length > 0 || Boolean(current);
+    }
+    return connectionStatus === 'connected';
+  }, [connectionStatus, current, queue]);
 
   return (
     <div className="fixed inset-0 pointer-events-none flex items-center justify-center">
-      <ConnectionIndicator isConnected={isConnected} />
+      <ConnectionIndicator
+        isConnected={isConnected}
+        status={connectionStatus}
+        isBackendConfigured={environment.isBackendConfigured}
+      />
       {current && <DisplayAlert alert={current} />}
     </div>
   );
 };
 
-const ConnectionIndicator = ({ isConnected }) => (
-  <div className={`connection-status-pro ${isConnected ? 'connected-pro' : ''}`}>
-    <span className={`connection-dot-pro ${isConnected ? 'connected-pro' : ''}`} />
-    <span className="connection-text-pro">{isConnected ? 'Connected' : 'Idle'}</span>
-  </div>
-);
+const statusLabels = {
+  idle: 'Idle',
+  connecting: 'Connecting',
+  connected: 'Connected',
+  disconnected: 'Disconnected',
+};
+
+const ConnectionIndicator = ({ isConnected, status, isBackendConfigured }) => {
+  const label = isBackendConfigured ? statusLabels[status] ?? 'Idle' : 'Test Mode';
+  return (
+    <div className={`connection-status-pro ${isConnected ? 'connected-pro' : ''}`}>
+      <span className={`connection-dot-pro ${isConnected ? 'connected-pro' : ''}`} />
+      <span className="connection-text-pro">{label}</span>
+    </div>
+  );
+};
 
 const DisplayAlert = ({ alert }) => {
   const { definition, payload } = alert;
